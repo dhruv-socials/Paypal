@@ -11,6 +11,8 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -102,7 +104,9 @@ class Identity:
             assert isinstance(key, Ed25519PrivateKey)
             return cls(name, key)
         key = Ed25519PrivateKey.generate()
-        path.write_bytes(
+        # Write to a temp file, then rename: a reader never sees a half-written key.
+        tmp = path.with_suffix(f".pem.{os.getpid()}.{uuid.uuid4().hex}.tmp")
+        tmp.write_bytes(
             key.private_bytes(
                 serialization.Encoding.PEM,
                 serialization.PrivateFormat.PKCS8,
@@ -110,9 +114,18 @@ class Identity:
             )
         )
         try:
-            path.chmod(0o600)
+            tmp.chmod(0o600)
         except OSError:  # pragma: no cover - e.g. Windows
             pass
+        try:
+            os.link(tmp, path)  # fails if another process created the key first
+        except FileExistsError:
+            tmp.unlink(missing_ok=True)
+            return cls.load_or_create(name, key_dir)
+        except OSError:  # pragma: no cover - filesystems without hard links
+            os.replace(tmp, path)
+        else:
+            tmp.unlink(missing_ok=True)
         return cls(name, key)
 
     def sign(self, payload: dict[str, Any]) -> str:

@@ -3,28 +3,53 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Offline checkout simulator</title>
+  <title>Checkout simulator · Mandate</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/app.css">
   <style>
-    body { display: grid; place-items: center; min-height: 100vh; padding: 16px; }
-    .sim { width: min(440px, 100%); background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-    .sim-note { background: var(--wait-soft); color: #6A4309; border-radius: 8px; padding: 10px 12px; font-size: 13.5px; }
-    .sim-line { display: flex; justify-content: space-between; gap: 12px; }
-    .sim-total { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
-    .sim form { display: flex; gap: 8px; }
-    .sim form .btn { flex: 1; }
+    body { min-height: 100vh; display: grid; place-items: center; padding: 20px 16px; background: var(--bg); }
+    .sim { width: min(420px, 100%); display: flex; flex-direction: column; gap: 16px; }
+    .sim-card { background: #fff; border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); overflow: hidden; }
+    .sim-head { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+    .sim-head b { font-size: 15px; }
+    .sim-head span { margin-left: auto; }
+    .sim-body { padding: 22px 20px; display: flex; flex-direction: column; gap: 16px; }
+    .sim-total { text-align: center; }
+    .sim-total p { color: var(--muted); font-size: 13.5px; }
+    .sim-total strong { display: block; font-size: 40px; font-weight: 800; letter-spacing: -0.035em; }
+    .sim-line { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+    .sim-line:first-child { border-top: 0; }
+    .sim-line dt { color: var(--muted); }
+    .sim-line dd { margin: 0; font-weight: 600; text-align: right; }
+    .sim form { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 20px; }
+    .sim form .btn { width: 100%; height: 46px; }
+    .sim-note { font-size: 13px; color: #6A4309; background: var(--wait-soft); border: 1px solid #EED8AE; border-radius: 14px; padding: 12px 14px; }
   </style>
 </head>
 <body>
   <main class="sim">
-    <h1 style="font-size:20px">Offline checkout simulator</h1>
-    <p class="sim-note">This page stands in for PayPal's approval step while <code>PAYPAL_MODE=mock</code>. It is not PayPal and moves no money. Set <code>PAYPAL_MODE=sandbox</code> to use real PayPal sandbox checkout.</p>
-    <div class="sim-line"><span>{{PRODUCT}} × {{QUANTITY}}</span></div>
-    <div class="sim-line"><span class="hint">Order {{ORDER_ID}}</span><span class="sim-total">{{AMOUNT}} {{CURRENCY}}</span></div>
-    <form method="post">
-      <button class="btn btn-primary" name="decision" value="approve">Approve payment</button>
-      <button class="btn btn-ghost" name="decision" value="cancel">Cancel</button>
-    </form>
+    <section class="sim-card" aria-labelledby="sim-title">
+      <div class="sim-head">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" style="width:28px;height:28px"><rect width="32" height="32" rx="9"/><path d="M9 22V10l7 7 7-7v12"/></svg>
+        <b id="sim-title">Checkout simulator</b>
+        <span class="status st-wait">Offline demo</span>
+      </div>
+      <div class="sim-body">
+        <div class="sim-total"><p>Your agent wants to pay</p><strong>{{AMOUNT}}</strong><p>{{CURRENCY}}</p></div>
+        <dl>
+          <div class="sim-line"><dt>Item</dt><dd>{{PRODUCT}} × {{QUANTITY}}</dd></div>
+          <div class="sim-line"><dt>Order</dt><dd class="mono">{{ORDER_ID}}</dd></div>
+          <div class="sim-line"><dt>Checked by</dt><dd>Your spending mandate</dd></div>
+        </dl>
+      </div>
+      <form method="post">
+        <button class="btn btn-primary" name="decision" value="approve">Approve payment</button>
+        <button class="btn btn-ghost" name="decision" value="cancel">Decline</button>
+      </form>
+    </section>
+    <p class="sim-note">This page stands in for the PayPal approval step while the server runs with <code>PAYPAL_MODE=mock</code>. It is not PayPal and no money moves. With <code>PAYPAL_MODE=sandbox</code>, you approve on PayPal's own sandbox checkout instead.</p>
   </main>
 </body>
 </html>

@@ -6,7 +6,7 @@ You sign a spending mandate once: how much, on what, until when, and the amount 
 
 ![Mandate: a fooled agent tries to buy a $500 gift card and the gateway blocks it](docs/agent-blocked.png)
 
-> Built for the [PayPal AI Hackathon 2026](https://developer.paypal.com/community/blog/PayPal_AI_Hackathon). Runs fully offline in mock mode, or against the real PayPal sandbox.
+> Built for the [PayPal AI Hackathon 2026](https://developer.paypal.com/community/blog/PayPal_AI_Hackathon). Runs fully offline in mock mode, or against the real PayPal sandbox. Supporting document: [docs/Mandate-for-PayPal.pdf](docs/Mandate-for-PayPal.pdf).
 
 ---
 
@@ -19,7 +19,6 @@ You sign a spending mandate once: how much, on what, until when, and the amount 
 - [Run against the PayPal sandbox](#run-against-the-paypal-sandbox)
 - [Use the live LLM agent](#use-the-live-llm-agent)
 - [Use it from any MCP client](#use-it-from-any-mcp-client)
-- [Three-minute demo script](#three-minute-demo-script)
 - [API](#api)
 - [Project structure](#project-structure)
 - [Security model and limits](#security-model-and-limits)
@@ -108,8 +107,8 @@ With `--llm`, the report also runs the real model on poisoned product pages and 
 Requires Python 3.11+.
 
 ```bash
-git clone https://github.com/Chan-dev12/Paypal-hackathon.git
-cd Paypal-hackathon
+git clone https://github.com/dhruv-socials/Paypal.git
+cd Paypal
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 cp .env.example .env
@@ -120,11 +119,11 @@ Open <http://localhost:8000>.
 
 Mock mode needs no accounts. PayPal is replaced by an offline checkout simulator that is clearly labelled and moves no money. Without a model key, the **scripted agent** replays fixed tool calls (including falling for an injection) while every purchase still goes through the live gateway.
 
-1. Sign a mandate: $120 total, $60 per purchase, ask above $40, groceries and household only.
-2. Click **Agent falls for a gift-card injection**. The rice is allowed, and the $500 gift card is blocked with reasons.
-3. Click **Approve on PayPal** on the rice order, approve, and watch the budget meter move from pending to paid.
-4. Click **Run attacks** and check the $0.00 headline.
-5. Open **Dispute evidence** on any payment.
+1. On **Home**, choose **Set up your mandate** and sign it: $120 total, $60 per purchase, ask above $40, groceries and household only.
+2. Open **Agent** and tap the **Cheapest basmati rice** suggestion. The agent buys the rice, then reads a planted instruction and tries to buy a $500 gift card. The gateway blocks it and shows which check failed.
+3. Open **Approvals**, review the rice order and approve it in the checkout simulator. The mandate card on **Home** moves the amount from pending to spent.
+4. Open **Security** and choose **Run all attacks**. Each attack is stopped live and the headline stays at $0.00.
+5. Open any payment in **Activity** for its receipt, the four signed records behind it and the downloadable dispute evidence.
 
 ## Run against the PayPal sandbox
 
@@ -156,7 +155,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-sonnet-5-5
 ```
 
-The **Run agent** button is now enabled. The agent has four tools: `search_products`, `view_product`, `check_budget` and `purchase`. It holds no PayPal credentials; `purchase` is a signed request to the gateway. Untick **Warn the agent that product pages are untrusted** to watch an unprotected model fall for the injections while the gateway still holds.
+The **Agent** chat now takes free-text requests. The agent has four tools: `search_products`, `view_product`, `check_budget` and `purchase`. It holds no PayPal credentials; `purchase` is a signed request to the gateway. Untick **Warn the agent that product pages are untrusted** under the message box to watch an unprotected model fall for the injections while the gateway still holds.
 
 ## Use it from any MCP client
 
@@ -175,7 +174,7 @@ Example client config for stdio:
     "mandate-paypal": {
       "command": "python",
       "args": ["-m", "app.mcp_server"],
-      "cwd": "/path/to/Paypal-hackathon",
+      "cwd": "/path/to/Paypal",
       "env": { "MANDATE_ID": "im_xxxxxxxx" }
     }
   }
@@ -184,16 +183,7 @@ Example client config for stdio:
 
 The design point: PayPal's Agent Toolkit gives an agent the ability to pay. Putting Mandate in front of it gives the agent limits it cannot override.
 
-## Three-minute demo script
 
-| Time | Show | Say |
-| --- | --- | --- |
-| 0:00 | The mandate card | "I signed one mandate: $120 for kitchen basics, nothing over $60, ask me above $40. Gift cards are never allowed." |
-| 0:30 | Run the gift-card injection scenario | "The cheapest rice page hides an instruction to buy a $500 gift card. The agent falls for it." |
-| 1:00 | The red *Blocked by your mandate* verdict | "The model was fooled. The money didn't move. Four rules fired, and none of them is an LLM." |
-| 1:30 | Approve the rice on PayPal | "What's allowed goes through normal PayPal approval, and the budget updates." |
-| 2:00 | Run attacks | "Fourteen attacks: forged agents, edited prices, replays, races. $0.00 outside a mandate." |
-| 2:30 | Dispute evidence and audit log | "Every payment carries three signatures and a hash-chained log, so a dispute can be settled offline." |
 
 ## API
 
@@ -233,7 +223,7 @@ app/
   demo_agent.py    Scripted agent for demos without a model key
   attacks.py       14 attacks plus an independent audit oracle
   mcp_server.py    The gated tools as an MCP server
-  static/          Web UI (no build step)
+  static/          Web app: home, agent chat, approvals, activity, security (no build step)
 data/catalog.json  Demo catalog, including deliberately poisoned product pages
 redteam/           Red-team runner and generated report
 tests/             Unit, property-based and end-to-end tests
@@ -252,20 +242,10 @@ docs/              Screenshots
 - Revocation is immediate, including for orders still waiting for approval.
 - The audit log is tamper-evident: editing any row breaks the hash chain at that row.
 
-**Demo simplifications (be aware of these)**
-
-- The user's signing key lives on the server. In production it would stay on the user's device (passkey or secure enclave), and the server would only verify.
-- One demo key signs carts for every merchant in the local catalog. In production each merchant signs its own carts.
-- The catalog is a local JSON file. A live source such as a product API can replace `LocalCatalog` with the same three methods.
-- SQLite storage suits a single instance. Use Postgres for anything shared.
-- Mock mode simulates PayPal. Only sandbox mode exercises PayPal's real APIs.
-
-This is a hackathon project and reference design. It is not a certified payments product.
-
 ## Testing
 
 ```bash
-pytest -q                      # 28 tests: crypto, policy, gateway, agent loop
+pytest -q                      # 32 tests: crypto, policy, gateway, agent loop, HTTP API
 python -m redteam.run_redteam  # attack suite, writes redteam/report.md
 python -m redteam.run_redteam --llm --runs 3   # adds live-model injection runs (needs ANTHROPIC_API_KEY)
 ```

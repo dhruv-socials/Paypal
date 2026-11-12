@@ -1,7 +1,7 @@
 """Wires the gateway together from settings. One instance per process."""
 from __future__ import annotations
 
-from functools import lru_cache
+import threading
 
 from .catalog import LocalCatalog
 from .config import settings
@@ -11,8 +11,21 @@ from .ledger import Ledger
 from .paypal import make_client
 
 
-@lru_cache(maxsize=1)
+_gateway: MandateGateway | None = None
+_lock = threading.Lock()
+
+
 def get_gateway() -> MandateGateway:
+    """Build the gateway once. The lock stops parallel first requests from racing."""
+    global _gateway
+    if _gateway is None:
+        with _lock:
+            if _gateway is None:
+                _gateway = _build()
+    return _gateway
+
+
+def _build() -> MandateGateway:
     key_dir = settings.data_dir / "keys"
     return MandateGateway(
         ledger=Ledger(settings.data_dir / "mandate.db"),

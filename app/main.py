@@ -127,7 +127,38 @@ def state() -> dict:
     visible = {m["id"] for m in mandates}
     orders = [_order_view(o) for o in gw.ledger.list_orders() if o["mandate_id"] in visible and o["paypal_order_id"]]
     events = [e for e in gw.ledger.events(limit=80) if e["mandate_id"] is None or e["mandate_id"] in visible]
-    return {"mandates": mandates, "orders": orders, "events": events[:40], "chain": gw.ledger.verify_chain()}
+    return {"mandates": mandates, "orders": orders, "denials": _denials(gw, visible),
+            "events": events[:40], "chain": gw.ledger.verify_chain()}
+
+
+def _denials(gw, visible: set[str], limit: int = 100) -> list[dict]:
+    """Blocked purchase attempts on the user's own mandates, newest first."""
+    out = []
+    for e in gw.ledger.events(limit=2000):
+        if e["type"] != "purchase.denied" or e["mandate_id"] not in visible:
+            continue
+        p = e["payload"]
+        cart = p.get("cart") or {}
+        item = (cart.get("items") or [{}])[0]
+        product_id = item.get("product_id") or p.get("product_id")
+        product = gw.catalog.products.get(product_id or "", {})
+        quantity = item.get("quantity") or p.get("quantity") or 1
+        amount = cart.get("total") or (str((Decimal(product["price"]) * int(quantity)).quantize(Decimal("0.01"))) if product else None)
+        decision = p.get("decision") or {"reasons": [p.get("reason", "")], "rules": [p.get("rule", "")]}
+        out.append({
+            "seq": e["seq"],
+            "ts": e["ts"],
+            "mandate_id": e["mandate_id"],
+            "product_id": product_id,
+            "product": item.get("name") or product.get("name") or product_id,
+            "quantity": quantity,
+            "amount": amount,
+            "reasons": decision.get("reasons", []),
+            "rules": decision.get("rules", []),
+        })
+        if len(out) >= limit:
+            break
+    return out
 
 
 @app.post("/api/mandates")
@@ -265,7 +296,7 @@ def mock_checkout(order_id: str) -> HTMLResponse:
         "{{ORDER_ID}}": order_id,
         "{{PRODUCT}}": summary["product"],
         "{{QUANTITY}}": str(summary["quantity"]),
-        "{{AMOUNT}}": order["amount"] if order else "0.00",
+        "{{AMOUNT}}": (("$" if (order or {}).get("currency", settings.currency) == "USD" else "") + (order["amount"] if order else "0.00")),
         "{{CURRENCY}}": order["currency"] if order else settings.currency,
     }
     for key, value in fields.items():

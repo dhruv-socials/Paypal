@@ -44,3 +44,24 @@ def test_kid_swap_is_rejected():
 def test_malformed_token():
     with pytest.raises(SignatureError):
         verify_jws("not-a-jws")
+
+
+def test_concurrent_key_creation_yields_one_key(tmp_path):
+    """Parallel first requests must not read a half-written key or create two keys."""
+    import threading
+    dids, errors = [], []
+
+    def load():
+        try:
+            dids.append(Identity.load_or_create("user", tmp_path).did)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=load) for _ in range(16)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []
+    assert len(set(dids)) == 1
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["user.pem"]
