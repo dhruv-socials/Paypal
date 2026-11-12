@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Offline checkout simulator</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <style>
+    body { display: grid; place-items: center; min-height: 100vh; padding: 16px; }
+    .sim { width: min(440px, 100%); background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+    .sim-note { background: var(--wait-soft); color: #6A4309; border-radius: 8px; padding: 10px 12px; font-size: 13.5px; }
+    .sim-line { display: flex; justify-content: space-between; gap: 12px; }
+    .sim-total { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+    .sim form { display: flex; gap: 8px; }
+    .sim form .btn { flex: 1; }
+  </style>
+</head>
+<body>
+  <main class="sim">
+    <h1 style="font-size:20px">Offline checkout simulator</h1>
+    <p class="sim-note">This page stands in for PayPal's approval step while <code>PAYPAL_MODE=mock</code>. It is not PayPal and moves no money. Set <code>PAYPAL_MODE=sandbox</code> to use real PayPal sandbox checkout.</p>
+    <div class="sim-line"><span>{{PRODUCT}} × {{QUANTITY}}</span></div>
+    <div class="sim-line"><span class="hint">Order {{ORDER_ID}}</span><span class="sim-total">{{AMOUNT}} {{CURRENCY}}</span></div>
+    <form method="post">
+      <button class="btn btn-primary" name="decision" value="approve">Approve payment</button>
+      <button class="btn btn-ghost" name="decision" value="cancel">Cancel</button>
+    </form>
+  </main>
+</body>
+</html>

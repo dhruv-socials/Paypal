@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mandate · AI shopping agents on a signed budget</title>
+  <meta name="description" content="Give an AI shopping agent a signed spending mandate. Every purchase is checked before it reaches PayPal.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23243B5A'/><path d='M9 22V10l7 7 7-7v12' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8"/><path d="M9 22V10l7 7 7-7v12"/></svg>
+      <div>
+        <strong>Mandate</strong>
+        <span class="brand-sub">Signed spending limits for AI shopping agents, paid with PayPal</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span id="mode-badge" class="badge">Loading…</span>
+      <span id="chain-badge" class="badge badge-quiet" title="Audit log hash chain">Audit log</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- ======================= Mandate column ======================= -->
+    <section class="col col-mandate" aria-labelledby="mandate-heading">
+      <h2 id="mandate-heading" class="col-title">Your mandate</h2>
+
+      <div id="mandate-empty" class="empty" hidden>
+        <p>No mandate yet. Sign one to let the agent shop for you within the limits you set.</p>
+      </div>
+
+      <article id="mandate-card" class="mandate" hidden>
+        <div class="mandate-head">
+          <div>
+            <p id="m-desc" class="mandate-desc"></p>
+            <p id="m-status" class="mandate-status"></p>
+          </div>
+          <select id="mandate-select" aria-label="Switch mandate" hidden></select>
+        </div>
+
+        <div class="meter-wrap">
+          <div class="meter-figures">
+            <span class="remaining" id="m-remaining">$0.00</span>
+            <span class="of">left of <span id="m-total">$0.00</span></span>
+          </div>
+          <div class="meter" role="img" id="m-meter" aria-label="Budget used">
+            <span class="meter-captured" id="m-bar-captured"></span>
+            <span class="meter-pending" id="m-bar-pending"></span>
+          </div>
+          <div class="meter-legend">
+            <span><i class="dot dot-captured"></i>Paid <b id="m-captured">$0.00</b></span>
+            <span><i class="dot dot-pending"></i>Waiting for approval <b id="m-pending">$0.00</b></span>
+          </div>
+        </div>
+
+        <dl class="limits">
+          <div><dt>Per purchase</dt><dd id="m-per-txn"></dd></div>
+          <div><dt>Ask me above</dt><dd id="m-stepup"></dd></div>
+          <div><dt>Max quantity</dt><dd id="m-qty"></dd></div>
+          <div><dt>Expires</dt><dd id="m-exp"></dd></div>
+          <div class="wide"><dt>Allowed</dt><dd id="m-cats"></dd></div>
+          <div class="wide"><dt>Never</dt><dd id="m-blocked"></dd></div>
+        </dl>
+
+        <div class="signature">
+          <svg viewBox="0 0 120 28" class="sig-scrawl" aria-hidden="true"><path d="M2 20c8-14 14-14 12 0s10-16 16-8 6 10 12-2 10-4 12 4 12-10 18-6 10 8 16 2 14-6 28-4"/></svg>
+          <div>
+            <p>Signed by you with Ed25519, delegated to one agent</p>
+            <p class="hash" id="m-id"></p>
+          </div>
+        </div>
+
+        <div class="mandate-actions">
+          <button class="btn btn-ghost" id="btn-new-mandate" type="button">New mandate</button>
+          <button class="btn btn-danger-ghost" id="btn-revoke" type="button">Revoke</button>
+        </div>
+      </article>
+
+      <form id="mandate-form" class="form" hidden>
+        <h3>Sign a new mandate</h3>
+        <label>What the agent may do
+          <input name="description" required minlength="3" value="Keep my kitchen stocked with groceries and household basics">
+        </label>
+        <div class="grid-2">
+          <label>Total budget (USD)<input name="total_max" type="number" min="1" step="0.01" value="120" required></label>
+          <label>Per purchase (USD)<input name="per_txn_max" type="number" min="1" step="0.01" value="60" required></label>
+          <label>Ask me above (USD)<input name="step_up_above" type="number" min="0" step="0.01" value="40" required></label>
+          <label>Max quantity per item<input name="max_quantity_per_item" type="number" min="1" max="100" value="5" required></label>
+          <label>Valid for (days)<input name="valid_days" type="number" min="1" max="365" value="30" required></label>
+        </div>
+        <fieldset class="cats">
+          <legend>Allowed categories</legend>
+          <div id="cat-options"></div>
+          <p class="hint">Gift cards, prepaid cards, crypto and money transfers are always blocked.</p>
+        </fieldset>
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">Sign mandate</button>
+          <button class="btn btn-ghost" type="button" id="btn-cancel-form">Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ======================= Agent column ======================= -->
+    <section class="col col-agent" aria-labelledby="agent-heading">
+      <div class="col-title-row">
+        <h2 id="agent-heading" class="col-title">Shopping agent</h2>
+        <div class="tabs" role="tablist">
+          <button role="tab" class="tab is-active" aria-selected="true" data-tab="agent">Ask the agent</button>
+          <button role="tab" class="tab" aria-selected="false" data-tab="manual">Buy as the agent</button>
+        </div>
+      </div>
+
+      <div class="panel" data-panel="agent">
+        <form id="agent-form" class="ask">
+          <textarea id="task" rows="3" placeholder="Tell the agent what to buy…" required>Restock my kitchen: basmati rice, toor dal and cooking oil. Pick well-rated options.</textarea>
+          <div class="ask-row">
+            <div class="presets" id="presets"></div>
+            <button class="btn btn-primary" type="submit" id="btn-run">Run agent</button>
+          </div>
+          <label class="toggle"><input type="checkbox" id="hardened" checked> Warn the agent that product pages are untrusted</label>
+        </form>
+        <p id="agent-notice" class="notice" hidden></p>
+        <div id="scripted" class="scripted" hidden>
+          <p>No model key? Replay a scripted agent. Its tool calls are fixed, but every purchase still goes through the live gateway.</p>
+          <div class="presets">
+            <button type="button" class="preset" data-script="fooled_by_gift_card">Agent falls for a gift-card injection</button>
+            <button type="button" class="preset" data-script="laptop_upgrade">Agent tries an $899 laptop</button>
+            <button type="button" class="preset" data-script="kitchen_restock">Normal kitchen restock</button>
+          </div>
+        </div>
+        <ol id="timeline" class="timeline" aria-live="polite"></ol>
+      </div>
+
+      <div class="panel" data-panel="manual" hidden>
+        <p class="panel-intro">Submit a purchase exactly as the agent would. Signed with the agent's key, checked by the same gateway. Useful when no model key is configured.</p>
+        <input id="product-search" class="search" type="search" placeholder="Search products">
+        <ul id="product-list" class="products"></ul>
+      </div>
+    </section>
+
+    <!-- ======================= Payments column ======================= -->
+    <section class="col col-orders" aria-labelledby="orders-heading">
+      <h2 id="orders-heading" class="col-title">Payments</h2>
+      <ul id="orders" class="orders"></ul>
+      <p id="orders-empty" class="empty">Purchases the gateway lets through appear here.</p>
+
+      <div class="redteam">
+        <div class="redteam-head">
+          <div>
+            <h3>Attack the gateway</h3>
+            <p>Runs 14 attacks, each on a throwaway mandate, then audits every order independently.</p>
+          </div>
+          <button class="btn btn-dark" id="btn-attacks" type="button">Run attacks</button>
+        </div>
+        <div id="attack-result"></div>
+      </div>
+
+      <details class="ledger">
+        <summary>Audit log <span id="ledger-count"></span></summary>
+        <ol id="events" class="events"></ol>
+      </details>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>
