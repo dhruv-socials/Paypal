@@ -108,7 +108,7 @@ With `--llm`, the report also runs the real model on poisoned product pages and 
 Requires Python 3.11+.
 
 ```bash
-git clone https://github.com/Chan-dev12/Paypal-hackathon.git
+git clone https://github.com/dhruv-socials/Paypal.git
 cd Paypal-hackathon
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
