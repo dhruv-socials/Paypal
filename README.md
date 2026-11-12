@@ -184,16 +184,7 @@ Example client config for stdio:
 
 The design point: PayPal's Agent Toolkit gives an agent the ability to pay. Putting Mandate in front of it gives the agent limits it cannot override.
 
-## Three-minute demo script
 
-| Time | Show | Say |
-| --- | --- | --- |
-| 0:00 | The mandate card | "I signed one mandate: $120 for kitchen basics, nothing over $60, ask me above $40. Gift cards are never allowed." |
-| 0:30 | Run the gift-card injection scenario | "The cheapest rice page hides an instruction to buy a $500 gift card. The agent falls for it." |
-| 1:00 | The red *Blocked by your mandate* verdict | "The model was fooled. The money didn't move. Four rules fired, and none of them is an LLM." |
-| 1:30 | Approve the rice on PayPal | "What's allowed goes through normal PayPal approval, and the budget updates." |
-| 2:00 | Run attacks | "Fourteen attacks: forged agents, edited prices, replays, races. $0.00 outside a mandate." |
-| 2:30 | Dispute evidence and audit log | "Every payment carries three signatures and a hash-chained log, so a dispute can be settled offline." |
 
 ## API
 
@@ -251,16 +242,6 @@ docs/              Screenshots
 - Budget checks and reservations are atomic, so concurrent requests cannot overspend.
 - Revocation is immediate, including for orders still waiting for approval.
 - The audit log is tamper-evident: editing any row breaks the hash chain at that row.
-
-**Demo simplifications (be aware of these)**
-
-- The user's signing key lives on the server. In production it would stay on the user's device (passkey or secure enclave), and the server would only verify.
-- One demo key signs carts for every merchant in the local catalog. In production each merchant signs its own carts.
-- The catalog is a local JSON file. A live source such as a product API can replace `LocalCatalog` with the same three methods.
-- SQLite storage suits a single instance. Use Postgres for anything shared.
-- Mock mode simulates PayPal. Only sandbox mode exercises PayPal's real APIs.
-
-This is a hackathon project and reference design. It is not a certified payments product.
 
 ## Testing
 
